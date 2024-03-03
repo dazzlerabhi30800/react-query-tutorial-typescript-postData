@@ -1,6 +1,7 @@
-export const fetchPosts = async (page: number) => {
+export const fetchPosts = async ({pageParam}: {pageParam: number}) => {
+    if(!pageParam) return;
     const response = await fetch(
-        `http://localhost:3000/posts?_sort=-id&${page ? `_page=${page}&_per_page=5` : ""
+        `http://localhost:3000/posts?_sort=-id&${pageParam ? `_page=${pageParam}&_per_page=5` : "" 
         }`
     );
     const postData = await response.json();

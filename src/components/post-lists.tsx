@@ -1,22 +1,33 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { addPost, fetchPosts, fetchTags } from "../api/api";
-import { FormEvent, useState } from "react";
+import { FormEvent } from "react";
 
 const PostList = () => {
-  const [page, setPage] = useState<number>(1);
   const queryClient = useQueryClient();
+
+  // Fetch Infinite Scrolling components
   const {
     data: postData,
-    isLoading,
     isError,
+    isLoading,
     error,
-  } = useQuery({
-    queryKey: ["posts", { page }],
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["posts"],
     staleTime: 1000 * 60 * 5,
-    // gcTime: 0,
-    // refetchInterval: 1000 * 5,
-    queryFn: () => fetchPosts(page),
+    queryFn: fetchPosts,
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      return lastPage.next;
+    },
   });
+
   // Fetch Tags
   const { data: tagData } = useQuery({
     queryKey: ["tags"],
@@ -51,8 +62,9 @@ const PostList = () => {
     const tags = Array.from(formData.keys()).filter(
       (key) => formData.get(key) === "on"
     );
+    const itemsLength = postData?.pages[0].items;
     if (!title || tags.length < 1) return;
-    mutate({ id: postData.data?.length + 1, title, tags });
+    mutate({ id: itemsLength + 1, title, tags });
   };
   return (
     <>
@@ -79,32 +91,24 @@ const PostList = () => {
         {isPostError && <p onClick={() => reset()}>Post error {isPostError}</p>}
         <div className="page--container">
           <button
-            className="btn prev"
-            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-            disabled={!postData?.prev}
-          >
-            prev
-          </button>
-          <span>{page}</span>
-          <button
             className="btn next"
-            onClick={() =>
-              setPage((prev) => Math.min(prev + 1, postData?.pages))
-            }
-            disabled={!postData?.next}
+            onClick={() => fetchNextPage()}
+            disabled={!hasNextPage}
           >
-            next
+            Load More
           </button>
         </div>
         <ul>
-          {postData?.data.map((data: post) => (
-            <li key={data.id}>
-              <p>{data.title}</p>
-              {data.tags.map((tag) => (
-                <span key={tag}>{tag}</span>
-              ))}
-            </li>
-          ))}
+          {postData?.pages.map((post: any) =>
+            post?.data.map((todo: post) => (
+              <li key={todo.id}>
+                <p>{todo.title}</p>
+                {todo.tags.map((tag) => (
+                  <span key={tag}>{tag}</span>
+                ))}
+              </li>
+            ))
+          )}
         </ul>
       </div>
     </>
